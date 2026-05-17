@@ -1,0 +1,74 @@
+rules:
+  - rule_id: deny_refund_for_fraud_flag
+    effect: deny
+    description: Block refunds for fraud-flagged accounts until a specialist reviews the case.
+    reason: Customer account is fraud-flagged. Autonomous refund is not allowed.
+    priority: 1000
+    when:
+      tool.name:
+        eq: issue_refund
+      user.fraud_flag:
+        eq: true
+    controls:
+      - fraud_control
+      - least_privilege
+      - human_escalation
+
+  - rule_id: require_support_manager_for_refund_above_50
+    effect: require_approval
+    description: Refunds above 50 require support manager approval.
+    reason: Refund exceeds autonomous support threshold.
+    approver_role: support_manager
+    priority: 900
+    when:
+      tool.name:
+        eq: issue_refund
+      args.amount:
+        gt: 50
+    controls:
+      - human_oversight
+      - approval_threshold
+      - record_keeping
+
+  - rule_id: require_finance_manager_for_refund_above_500
+    effect: require_approval
+    description: Refunds above 500 require finance manager approval.
+    reason: Refund exceeds finance escalation threshold.
+    approver_role: finance_manager
+    priority: 950
+    when:
+      tool.name:
+        eq: issue_refund
+      args.amount:
+        gt: 500
+    controls:
+      - human_oversight
+      - financial_control
+      - record_keeping
+
+  - rule_id: allow_small_refund
+    effect: allow
+    description: Small refunds may be issued automatically if no higher-risk rule matches.
+    reason: Refund is within the autonomous approval limit.
+    priority: 100
+    when:
+      tool.name:
+        eq: issue_refund
+      args.amount:
+        lte: 50
+    controls:
+      - least_privilege
+      - audit_logging
+
+  - rule_id: allow_order_lookup
+    effect: allow
+    description: The support agent may read order information for support purposes.
+    reason: Order lookup is allowed for this agent.
+    priority: 100
+    when:
+      tool.name:
+        eq: get_order
+    controls:
+      - minimum_necessary_access
+      - audit_logging
+      - privacy_control

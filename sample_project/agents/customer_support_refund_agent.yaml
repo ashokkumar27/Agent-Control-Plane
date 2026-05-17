@@ -1,0 +1,32 @@
+agent_id: customer_support_refund_agent
+owner: support_operations
+business_owner: Head of Customer Support
+technical_owner: AI Platform Team
+framework: any_agent_framework
+model: your-model-name
+purpose: >
+  Helps customer support agents investigate order problems and propose refunds
+  or replacements. It may read order information and request refund actions,
+  but it must not approve large refunds or override fraud controls by itself.
+risk_tier: high
+affected_users:
+  - customers
+  - support_agents
+data_processed:
+  - pii
+  - confidential
+allowed_tools:
+  - get_order
+  - issue_refund
+prohibited_tools:
+  - delete_customer_account
+  - modify_payment_method
+human_oversight:
+  required_for:
+    - refunds above autonomous limit
+    - fraud flagged accounts
+    - legal complaints
+tags:
+  - customer_support
+  - refunds
+  - human_approval

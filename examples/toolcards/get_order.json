@@ -1,0 +1,10 @@
+{
+  "name": "get_order",
+  "description": "Read order status, items, delivery status, and customer metadata.",
+  "tool_type": "read_only",
+  "risk_tier": "medium",
+  "side_effect": false,
+  "data_access": ["pii", "confidential"],
+  "allowed_roles": ["support_agent", "support_manager"],
+  "tags": ["orders", "read-only"]
+}

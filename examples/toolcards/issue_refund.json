@@ -1,0 +1,11 @@
+{
+  "name": "issue_refund",
+  "description": "Issue a customer refund through the payments system.",
+  "tool_type": "side_effecting",
+  "risk_tier": "high",
+  "side_effect": true,
+  "data_access": ["pii", "pci", "confidential"],
+  "allowed_roles": ["support_agent", "support_manager", "finance_manager"],
+  "approval_rules": ["amount > 50 requires support_manager", "amount > 500 requires finance_manager"],
+  "tags": ["payments", "money-movement", "human-approval"]
+}

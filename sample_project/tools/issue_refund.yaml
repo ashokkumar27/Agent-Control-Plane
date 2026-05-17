@@ -1,0 +1,20 @@
+name: issue_refund
+description: Issue a customer refund through the payment system.
+tool_type: side_effecting
+risk_tier: high
+side_effect: true
+data_access:
+  - pii
+  - pci
+allowed_roles:
+  - support_agent
+  - support_manager
+  - finance_manager
+approval_rules:
+  - Refunds above 50 require support manager approval.
+  - Refunds above 500 require finance manager approval.
+  - Fraud flagged accounts must be denied or escalated.
+tags:
+  - payment
+  - refund
+  - high_impact_action

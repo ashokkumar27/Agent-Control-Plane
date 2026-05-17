@@ -1,0 +1,65 @@
+{
+  "rules": [
+    {
+      "rule_id": "deny_refund_for_fraud_flag",
+      "effect": "deny",
+      "priority": 300,
+      "description": "Fraud-flagged users cannot receive autonomous refunds.",
+      "reason": "Customer or account is fraud-flagged. Escalate to fraud operations.",
+      "when": {
+        "tool.name": {"eq": "issue_refund"},
+        "user.fraud_flag": {"eq": true}
+      },
+      "controls": ["fraud_control", "least_privilege", "risk_management"]
+    },
+    {
+      "rule_id": "finance_approval_refund_above_500",
+      "effect": "require_approval",
+      "priority": 250,
+      "description": "Refunds above 500 require finance approval.",
+      "reason": "Refund exceeds finance approval threshold.",
+      "approver_role": "finance_manager",
+      "when": {
+        "tool.name": {"eq": "issue_refund"},
+        "args.amount": {"gt": 500}
+      },
+      "controls": ["approval_threshold", "human_oversight", "record_keeping"]
+    },
+    {
+      "rule_id": "support_approval_refund_above_50",
+      "effect": "require_approval",
+      "priority": 200,
+      "description": "Refunds above 50 require support manager approval.",
+      "reason": "Refund exceeds autonomous threshold.",
+      "approver_role": "support_manager",
+      "when": {
+        "tool.name": {"eq": "issue_refund"},
+        "args.amount": {"gt": 50}
+      },
+      "controls": ["approval_threshold", "human_oversight", "record_keeping"]
+    },
+    {
+      "rule_id": "allow_low_value_refund",
+      "effect": "allow",
+      "priority": 100,
+      "description": "Allow low-value refunds for non-fraud customers.",
+      "reason": "Refund is within autonomous limit.",
+      "when": {
+        "tool.name": {"eq": "issue_refund"},
+        "args.amount": {"lte": 50}
+      },
+      "controls": ["least_privilege", "tool_allowlist", "record_keeping"]
+    },
+    {
+      "rule_id": "allow_read_only_order_lookup",
+      "effect": "allow",
+      "priority": 100,
+      "description": "Allow registered support agent to read order data.",
+      "reason": "Read-only order lookup is allowed for this agent.",
+      "when": {
+        "tool.name": {"eq": "get_order"}
+      },
+      "controls": ["least_privilege", "tool_allowlist", "data_minimization"]
+    }
+  ]
+}

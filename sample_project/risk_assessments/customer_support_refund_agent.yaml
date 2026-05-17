@@ -1,0 +1,15 @@
+assessment_id: customer_support_refund_agent_initial_review
+agent_id: customer_support_refund_agent
+reviewer: Governance Team
+status: draft
+plain_language_questions:
+  - What customer problem does this agent solve?
+  - Could the agent cause financial loss if misused?
+  - Could the agent expose personal data?
+  - Which actions require a human approval?
+  - Who is accountable if the agent makes a wrong recommendation?
+  - Can we audit every refund request later?
+decisions_needed:
+  - Confirm autonomous refund threshold.
+  - Confirm escalation owner for fraud-flagged accounts.
+  - Confirm data retention period for audit records.

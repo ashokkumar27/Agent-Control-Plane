@@ -1,0 +1,20 @@
+{
+  "agent_id": "customer-support-refund-agent",
+  "owner": "support-ops",
+  "business_owner": "head-of-support",
+  "technical_owner": "ai-platform-team",
+  "purpose": "Resolve customer support issues involving orders, replacements, tickets, and low-risk refunds.",
+  "risk_tier": "medium",
+  "framework": "framework-agnostic-demo",
+  "model": "any-tool-calling-llm",
+  "allowed_tools": ["get_order", "search_policy", "issue_refund", "create_ticket", "send_email"],
+  "prohibited_tools": ["delete_customer", "modify_payment_method", "export_customer_database"],
+  "data_processed": ["pii", "confidential"],
+  "affected_users": ["customers", "support_staff"],
+  "human_oversight": {
+    "refund_above_usd": 50,
+    "legal_complaint": true,
+    "fraud_flag": true
+  },
+  "tags": ["support", "refunds", "governed-agent"]
+}
