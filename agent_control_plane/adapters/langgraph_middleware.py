@@ -13,13 +13,33 @@ class LangGraphToolMiddleware:
     a LangGraph ToolNode or custom node.
     """
 
-    def __init__(self, control_plane: AgentControlPlane, *, agent_id: str):
+    def __init__(
+        self,
+        control_plane: AgentControlPlane,
+        *,
+        agent_id: str,
+        user_id: str | None = None,
+        run_id: str | None = None,
+        context: dict[str, Any] | None = None,
+    ):
         self.control_plane = control_plane
         self.agent_id = agent_id
+        self.user_id = user_id
+        self.run_id = run_id
+        self.context = context
 
     def wrap_tool(self, tool_name: str, handler: Callable[..., Any]) -> Callable[..., dict[str, Any]]:
+        if self.control_plane.tools.exists(tool_name):
+            self.control_plane.tools.bind_handler(tool_name, handler)
+
         def governed_handler(**kwargs: Any) -> dict[str, Any]:
-            # Register the actual callable in the control plane separately.
-            return self.control_plane.execute_tool(agent_id=self.agent_id, tool_name=tool_name, args=kwargs)
+            return self.control_plane.execute_tool(
+                agent_id=self.agent_id,
+                tool_name=tool_name,
+                args=kwargs,
+                user_id=self.user_id,
+                run_id=self.run_id,
+                context=self.context,
+            )
 
         return governed_handler

@@ -40,7 +40,8 @@ class BasicGuardrails:
         for pattern in self.prompt_injection_patterns:
             if re.search(pattern, text, flags=re.IGNORECASE):
                 findings.append(f"Matched prompt-injection pattern: {pattern}")
-                controls.append("prompt_injection_detection")
+                if "prompt_injection_detection" not in controls:
+                    controls.append("prompt_injection_detection")
         return GuardrailResult(passed=not findings, controls_triggered=controls, findings=findings)
 
     def redact_pii(self, text: str) -> GuardrailResult:

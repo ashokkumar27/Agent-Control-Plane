@@ -1,7 +1,12 @@
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 from agent_control_plane import ControlPlaneProject
 
-ROOT = Path(__file__).resolve().parents[1] / "sample_project"
+PROJECT_ROOT = ROOT / "sample_project"
 
 
 def get_order(order_id: str):
@@ -12,7 +17,7 @@ def issue_refund(order_id: str, amount: float, reason: str):
     return {"status": "refund_issued", "order_id": order_id, "amount": amount, "reason": reason}
 
 
-project = ControlPlaneProject.load(ROOT)
+project = ControlPlaneProject.load(PROJECT_ROOT)
 plane = project.build_control_plane(handlers={
     "get_order": get_order,
     "issue_refund": issue_refund,

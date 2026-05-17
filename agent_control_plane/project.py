@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .io import iter_config_files, read_structured_file
-from .models import AgentCard, ToolCard, PolicyRule
+from .models import AgentCard, DecisionType, ToolCard, PolicyRule
 from .policy import PolicyEngine
 from .registries import AgentRegistry, ToolRegistry
 from .gateway import AgentControlPlane
@@ -95,15 +95,50 @@ class ControlPlaneProject:
         agent = self.get_agent(agent_id)
         return assess_agent_readiness(agent, self.tools_for_agent(agent), self.policies)
 
-    def simulate(self, *, agent_id: str, tool_name: str, args: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any]:
+    def simulate(
+        self,
+        *,
+        agent_id: str,
+        tool_name: str,
+        args: dict[str, Any],
+        user: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Dry-run a tool call and return the policy outcome without execution."""
         plane = self.build_control_plane()
-        return plane.execute_tool(
+        simulation_context = dict(context or {})
+        if user is not None:
+            simulation_context["user"] = {**simulation_context.get("user", {}), **user}
+        else:
+            simulation_context.setdefault("user", {})
+        call, decision = plane.propose_tool_call(
             agent_id=agent_id,
             tool_name=tool_name,
             args=args,
-            user_id=(user or {}).get("user_id"),
-            context={"user": user or {}},
+            user_id=simulation_context.get("user", {}).get("user_id"),
+            context=simulation_context,
         )
+        if decision.decision == DecisionType.ALLOW:
+            status = "allowed"
+            would_execute = True
+        elif decision.decision == DecisionType.REQUIRE_APPROVAL:
+            status = "approval_required"
+            would_execute = False
+        elif decision.decision == DecisionType.DENY:
+            status = "denied"
+            would_execute = False
+        else:
+            status = decision.decision.value
+            would_execute = False
+        return {
+            "status": status,
+            "simulated": True,
+            "would_execute": would_execute,
+            "reason": decision.reason,
+            "approver_role": decision.approver_role,
+            "tool_call": call.to_dict(),
+            "decision": decision.to_dict(),
+        }
 
     def inventory_summary(self) -> dict[str, Any]:
         return {

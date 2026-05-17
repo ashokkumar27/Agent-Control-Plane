@@ -27,6 +27,9 @@ STARTER_FILES: dict[str, str] = {
     agentctl portal .
     ```
 
+    `agentctl simulate` is a dry run. It returns the policy decision without
+    calling the underlying tool handler.
+
     ## For developers
 
     Load this project in Python:
