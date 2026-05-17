@@ -11,6 +11,7 @@ from .project import ControlPlaneProject
 from .templates import write_starter_project
 from .onboarding import write_intake_templates
 from .portal import run_portal
+from .scenarios import run_scenario_tests
 from .validation import validate_project
 
 
@@ -49,6 +50,7 @@ def init_project(path: str, overwrite: bool = False) -> None:
     print(f"Created Agent Control Plane starter project at {target}")
     print("Next steps:")
     print(f"  agentctl validate {target}")
+    print(f"  agentctl test {target}")
     print(f"  agentctl review {target}")
     print(f"  agentctl assess {target}")
     print(f"  agentctl portal {target}")
@@ -105,6 +107,15 @@ def simulate(
     _print_json(result)
 
 
+def test_project(path: str, scenarios_path: str | None = None, json_output: bool = False) -> int:
+    report = run_scenario_tests(path, scenarios_path)
+    if json_output:
+        _print_json(report.to_dict())
+    else:
+        print(report.to_markdown())
+    return 0 if report.passed else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="agentctl", description="Agent Control Plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -140,6 +151,11 @@ def main(argv: list[str] | None = None) -> int:
     p_sim.add_argument("--user", help='Optional JSON user context, e.g. {"fraud_flag": false}')
     p_sim.add_argument("--context", help='Optional JSON runtime context, e.g. {"input": "user message"}')
 
+    p_test = sub.add_parser("test", help="Run YAML governance scenario regression tests")
+    p_test.add_argument("path")
+    p_test.add_argument("--scenarios", help="Scenario file or directory. Defaults to <project>/scenarios.")
+    p_test.add_argument("--json", action="store_true")
+
     p_portal = sub.add_parser("portal", help="Run a local non-technical onboarding portal")
     p_portal.add_argument("path")
     p_portal.add_argument("--host", default="127.0.0.1")
@@ -169,6 +185,8 @@ def main(argv: list[str] | None = None) -> int:
         assess_project(args.path, args.agent, args.json)
     elif args.command == "simulate":
         simulate(args.path, args.agent, args.tool, args.args, args.user, args.context)
+    elif args.command == "test":
+        return test_project(args.path, args.scenarios, args.json)
     elif args.command == "portal":
         run_portal(args.path, host=args.host, port=args.port)
     elif args.command == "validate-agent":

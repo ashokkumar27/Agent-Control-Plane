@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
-from .models import EvidenceRecord, new_id, stable_hash
+from .models import EvidenceRecord, new_id, stable_hash, to_dict
 
 
 @dataclass(slots=True)
@@ -112,7 +112,7 @@ class InMemoryAuditLedger:
             run_id=run_id,
             agent_id=agent_id,
             event_type=event_type,
-            payload=payload,
+            payload=to_dict(payload),
             previous_hash=previous_hash,
         ).seal()
         self._records.append(record)
@@ -173,7 +173,7 @@ class SQLiteAuditLedger:
             run_id=run_id,
             agent_id=agent_id,
             event_type=event_type,
-            payload=payload,
+            payload=to_dict(payload),
             previous_hash=self._last_hash(),
         ).seal()
         with closing(self._connect()) as conn:

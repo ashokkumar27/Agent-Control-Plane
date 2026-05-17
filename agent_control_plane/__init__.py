@@ -9,6 +9,8 @@ Developer idea:
 
 Governance team idea:
     agentctl init my_agent_project
+    agentctl validate my_agent_project
+    agentctl test my_agent_project
     agentctl review my_agent_project
     agentctl assess my_agent_project
     agentctl portal my_agent_project
@@ -41,6 +43,14 @@ from .idempotency import (
 )
 from .ledger import AuditLedger, InMemoryAuditLedger, LedgerVerificationIssue, LedgerVerificationResult, SQLiteAuditLedger
 from .project import ControlPlaneProject
+from .scenarios import (
+    ScenarioFailure,
+    ScenarioResult,
+    ScenarioRunner,
+    ScenarioStepResult,
+    ScenarioTestReport,
+    run_scenario_tests,
+)
 from .templates import write_starter_project
 from .onboarding import write_intake_templates
 from .assessment import assess_agent_readiness, ReadinessReport, Finding
@@ -67,6 +77,12 @@ __all__ = [
     "AgentControlPlane",
     "governed_tool",
     "ControlPlaneProject",
+    "ScenarioFailure",
+    "ScenarioResult",
+    "ScenarioRunner",
+    "ScenarioStepResult",
+    "ScenarioTestReport",
+    "run_scenario_tests",
     "write_starter_project",
     "write_intake_templates",
     "assess_agent_readiness",

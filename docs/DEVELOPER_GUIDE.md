@@ -44,6 +44,59 @@ The CLI form is suitable for CI:
 agentctl validate my_agent_project --json
 ```
 
+## Governance scenario tests
+
+After validation, run scenario tests as the CI gate for expected governance
+behavior:
+
+```bash
+agentctl test my_agent_project
+agentctl test my_agent_project --json
+```
+
+Scenarios are YAML or JSON files under `<project>/scenarios`. They can be
+single-step dry runs or multi-step runtime checks. Use `mode: simulate` for
+policy-only checks and `mode: execute` for mocked tool execution, idempotency,
+tool errors, approval flows, audit events, and ledger verification.
+
+```yaml
+name: idempotency_conflict_blocks_changed_request
+mode: execute
+agent_id: customer_support_refund_agent
+tool_name: issue_refund
+idempotency_key: refund:A123:conflict
+user:
+  fraud_flag: false
+steps:
+  - name: first_request
+    args:
+      order_id: A123
+      amount: 25
+      reason: Late delivery
+    expected:
+      status: success
+      idempotency:
+        replayed: false
+  - name: changed_request_same_key
+    args:
+      order_id: A123
+      amount: 30
+      reason: Changed amount
+    expected:
+      status: idempotency_conflict
+      ledger_events:
+        includes:
+          - idempotency_conflict
+expected:
+  ledger_verifies: true
+```
+
+Supported expectation fields include `status`, `approver_role`,
+`matched_rules`, `controls`, `ledger_events`, `idempotency`, `output`, and
+`ledger_verifies`. Collection fields support `includes`, `excludes`, and
+`equals`. See [Scenario Testing](SCENARIO_TESTING.md) for the full workflow and
+recommended coverage.
+
 ## Durable approvals for pilots
 
 The default approval queue is in-memory for simple examples. For local pilots,

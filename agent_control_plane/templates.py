@@ -16,12 +16,14 @@ STARTER_FILES: dict[str, str] = {
     - `agents/customer_support_refund_agent.yaml` — what the agent is for, who owns it, and what tools it may use.
     - `tools/issue_refund.yaml` — what the tool does and why it is high impact.
     - `policies/refund_controls.yaml` — what is allowed, denied, or sent for approval.
+    - `scenarios/refund_governance.yaml` — regression tests for expected policy and runtime behavior.
     - `risk_assessments/customer_support_refund_agent.yaml` — business-friendly review questions.
 
     You can run:
 
     ```bash
     agentctl validate .
+    agentctl test .
     agentctl review .
     agentctl assess .
     agentctl simulate . --agent customer_support_refund_agent --tool issue_refund --args '{"order_id":"A123","amount":280,"reason":"Damaged item"}'
@@ -33,6 +35,10 @@ STARTER_FILES: dict[str, str] = {
 
     `agentctl simulate` is a dry run. It returns the policy decision without
     calling the underlying tool handler.
+
+    `agentctl test` is the scenario regression gate. Put the scenarios in CI so
+    policy edits, approval changes, idempotency behavior, and audit logging do
+    not drift silently.
 
     ## For developers
 
@@ -192,6 +198,124 @@ STARTER_FILES: dict[str, str] = {
           - minimum_necessary_access
           - audit_logging
           - privacy_control
+    """,
+    "scenarios/refund_governance.yaml": """
+    scenarios:
+      - name: small_refund_allowed
+        mode: simulate
+        agent_id: customer_support_refund_agent
+        tool_name: issue_refund
+        args:
+          order_id: A123
+          amount: 25
+          reason: Late delivery
+        user:
+          fraud_flag: false
+        expected:
+          status: allowed
+          matched_rules:
+            includes:
+              - allow_small_refund
+          controls:
+            includes:
+              - audit_logging
+              - least_privilege
+          ledger_events:
+            includes:
+              - tool_call_proposed
+          ledger_verifies: true
+
+      - name: finance_refund_requires_finance_manager
+        mode: simulate
+        agent_id: customer_support_refund_agent
+        tool_name: issue_refund
+        args:
+          order_id: A123
+          amount: 600
+          reason: Major loss
+        user:
+          fraud_flag: false
+        expected:
+          status: approval_required
+          approver_role: finance_manager
+          matched_rules:
+            includes:
+              - require_finance_manager_for_refund_above_500
+          controls:
+            includes:
+              - financial_control
+              - human_oversight
+          ledger_events:
+            includes:
+              - tool_call_proposed
+          ledger_verifies: true
+
+      - name: fraud_flag_denied
+        mode: simulate
+        agent_id: customer_support_refund_agent
+        tool_name: issue_refund
+        args:
+          order_id: A123
+          amount: 25
+          reason: Customer request
+        user:
+          fraud_flag: true
+        expected:
+          status: denied
+          matched_rules:
+            includes:
+              - deny_refund_for_fraud_flag
+          controls:
+            includes:
+              - fraud_control
+              - human_escalation
+          ledger_events:
+            includes:
+              - tool_call_proposed
+          ledger_verifies: true
+
+      - name: idempotent_refund_replays_without_double_execution
+        mode: execute
+        agent_id: customer_support_refund_agent
+        tool_name: issue_refund
+        idempotency_key: refund:A123:25
+        args:
+          order_id: A123
+          amount: 25
+          reason: Late delivery
+        user:
+          fraud_flag: false
+        mock_output:
+          refund_id: RF-SCENARIO-001
+          order_id: A123
+          amount: 25
+          reason: Late delivery
+        steps:
+          - name: first_execution
+            expected:
+              status: success
+              idempotency:
+                replayed: false
+              ledger_events:
+                includes:
+                  - idempotency_started
+                  - tool_call_executed
+                  - idempotency_completed
+          - name: retry_same_request
+            expected:
+              status: success
+              idempotency:
+                replayed: true
+              ledger_events:
+                includes:
+                  - idempotency_replayed
+        expected:
+          ledger_events:
+            includes:
+              - idempotency_started
+              - idempotency_completed
+              - idempotency_replayed
+          ledger_verifies: true
     """,
     "risk_assessments/customer_support_refund_agent.yaml": """
     assessment_id: customer_support_refund_agent_initial_review

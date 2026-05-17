@@ -17,6 +17,7 @@ Use the plain-language workflow:
 ```bash
 agentctl init my_agent_project
 agentctl validate my_agent_project
+agentctl test my_agent_project
 agentctl review my_agent_project
 agentctl assess my_agent_project
 agentctl portal my_agent_project
@@ -28,6 +29,7 @@ You will get:
 - tool intake forms
 - plain-language reviews
 - readiness scoring
+- scenario regression tests
 - policy explanations
 - approval threshold examples
 - audit/evidence-ready structure
@@ -94,6 +96,8 @@ my_agent_project/
     issue_refund.yaml
   policies/
     refund_controls.yaml
+  scenarios/
+    refund_governance.yaml
   risk_assessments/
     customer_support_refund_agent.yaml
 ```
@@ -106,6 +110,7 @@ YAML is used because non-technical reviewers can read it like a form.
 agentctl init my_agent_project
 agentctl inventory my_agent_project
 agentctl validate my_agent_project
+agentctl test my_agent_project
 agentctl review my_agent_project
 agentctl assess my_agent_project
 agentctl simulate my_agent_project --agent customer_support_refund_agent --tool issue_refund --args '{"order_id":"A123","amount":280,"reason":"Damaged item"}'
@@ -120,6 +125,37 @@ coverage.
 
 `agentctl simulate` is a dry run: it returns the policy outcome without calling
 the underlying tool handler.
+
+`agentctl test` is the scenario regression gate for production confidence. It
+runs YAML scenarios from `<project>/scenarios` and fails CI when policy
+outcomes, approval routing, idempotency behavior, audit events, or ledger
+verification drift from expectations. See [Scenario Testing](docs/SCENARIO_TESTING.md)
+for the full scenario format.
+
+Example scenario:
+
+```yaml
+name: large_refund_requires_finance_manager
+mode: simulate
+agent_id: customer_support_refund_agent
+tool_name: issue_refund
+args:
+  order_id: A123
+  amount: 600
+  reason: Major loss
+user:
+  fraud_flag: false
+expected:
+  status: approval_required
+  approver_role: finance_manager
+  matched_rules:
+    includes:
+      - require_finance_manager_for_refund_above_500
+  ledger_events:
+    includes:
+      - tool_call_proposed
+  ledger_verifies: true
+```
 
 ## Governance Interface
 
@@ -138,6 +174,7 @@ It should not be described as automatic legal compliance. It is a technical and 
 ```bash
 python3 -m pip install -e .
 agentctl validate sample_project
+agentctl test sample_project
 agentctl review sample_project
 agentctl assess sample_project
 python3 examples/developer_friendly_sdk.py

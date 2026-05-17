@@ -1,6 +1,7 @@
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from agent_control_plane import InMemoryAuditLedger, SQLiteAuditLedger
@@ -24,6 +25,17 @@ class LedgerTests(unittest.TestCase):
 
         self.assertFalse(result.valid)
         self.assertEqual(result.issues[0].code, "evidence_hash_mismatch")
+
+    def test_in_memory_append_snapshots_payload(self):
+        ledger = InMemoryAuditLedger()
+        payload = {"result": {"status": "success"}}
+        ledger.append(run_id="r1", agent_id="a1", event_type="tool_call_executed", payload=payload)
+        payload["result"]["idempotency"] = {"replayed": False}
+
+        records = ledger.list_records()
+
+        self.assertNotIn("idempotency", records[0].payload["result"])
+        self.assertTrue(ledger.verify().valid)
 
     def test_sqlite_persistence(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -54,11 +66,12 @@ class LedgerTests(unittest.TestCase):
             db = Path(tmp) / "audit.sqlite"
             ledger = SQLiteAuditLedger(db)
             record = ledger.append(run_id="r1", agent_id="a1", event_type="start", payload={"x": 1})
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn:
                 conn.execute(
                     "UPDATE evidence_records SET payload_json = ? WHERE record_id = ?",
                     ('{"x": 99}', record.record_id),
                 )
+                conn.commit()
 
             result = SQLiteAuditLedger(db).verify()
 
