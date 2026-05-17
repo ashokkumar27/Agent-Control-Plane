@@ -16,6 +16,7 @@ Use the plain-language workflow:
 
 ```bash
 agentctl init my_agent_project
+agentctl validate my_agent_project
 agentctl review my_agent_project
 agentctl assess my_agent_project
 agentctl portal my_agent_project
@@ -94,12 +95,18 @@ YAML is used because non-technical reviewers can read it like a form.
 ```bash
 agentctl init my_agent_project
 agentctl inventory my_agent_project
+agentctl validate my_agent_project
 agentctl review my_agent_project
 agentctl assess my_agent_project
 agentctl simulate my_agent_project --agent customer_support_refund_agent --tool issue_refund --args '{"order_id":"A123","amount":280,"reason":"Damaged item"}'
 agentctl portal my_agent_project
 agentctl init-intake blank_forms
 ```
+
+`agentctl validate` is the production gate for project configuration. It fails
+closed on invalid cards, duplicate IDs, unknown agent/tool references,
+unsupported policy operators, and high-impact tools without deny or approval
+coverage.
 
 `agentctl simulate` is a dry run: it returns the policy outcome without calling
 the underlying tool handler.
@@ -114,6 +121,7 @@ It should not be described as automatic legal compliance. It is a technical and 
 
 ```bash
 python3 -m pip install -e .
+agentctl validate sample_project
 agentctl review sample_project
 agentctl assess sample_project
 python3 examples/developer_friendly_sdk.py

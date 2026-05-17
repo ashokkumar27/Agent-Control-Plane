@@ -68,6 +68,8 @@ _OPERATORS = {
     "regex": lambda value, expected: bool(re.search(str(expected), str(value or ""), flags=re.IGNORECASE)),
 }
 
+SUPPORTED_POLICY_OPERATORS = frozenset(_OPERATORS) | {"any", "all"}
+
 
 class PolicyEngine:
     """Deterministic policy engine for agent tool calls.

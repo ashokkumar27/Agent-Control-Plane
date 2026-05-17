@@ -21,11 +21,15 @@ STARTER_FILES: dict[str, str] = {
     You can run:
 
     ```bash
+    agentctl validate .
     agentctl review .
     agentctl assess .
     agentctl simulate . --agent customer_support_refund_agent --tool issue_refund --args '{"order_id":"A123","amount":280,"reason":"Damaged item"}'
     agentctl portal .
     ```
+
+    `agentctl validate` is the production gate. Treat validation errors as
+    deployment blockers before running agents against real tools.
 
     `agentctl simulate` is a dry run. It returns the policy decision without
     calling the underlying tool handler.

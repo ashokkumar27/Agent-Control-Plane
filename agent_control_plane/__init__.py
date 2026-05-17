@@ -39,6 +39,7 @@ from .templates import write_starter_project
 from .onboarding import write_intake_templates
 from .assessment import assess_agent_readiness, ReadinessReport, Finding
 from .plain_language import describe_agent_for_humans
+from .validation import ProjectValidationIssue, ProjectValidationReport, validate_project
 
 __all__ = [
     "AgentCard",
@@ -67,4 +68,7 @@ __all__ = [
     "Finding",
     "describe_agent_for_humans",
     "InMemoryApprovalQueue",
+    "ProjectValidationIssue",
+    "ProjectValidationReport",
+    "validate_project",
 ]
