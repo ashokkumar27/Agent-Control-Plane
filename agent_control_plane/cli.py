@@ -11,6 +11,7 @@ from .project import ControlPlaneProject
 from .templates import write_starter_project
 from .onboarding import write_intake_templates
 from .portal import run_portal
+from .validation import validate_project
 
 
 def _print_json(data: Any) -> None:
@@ -34,10 +35,20 @@ def validate_policy(path: str) -> None:
     _print_json({"status": "valid", "rules": [rule.to_dict() for rule in rules]})
 
 
+def validate_project_command(path: str, json_output: bool = False) -> int:
+    report = validate_project(path)
+    if json_output:
+        _print_json(report.to_dict())
+    else:
+        print(report.to_markdown())
+    return 0 if report.valid else 1
+
+
 def init_project(path: str, overwrite: bool = False) -> None:
     target = write_starter_project(path, overwrite=overwrite)
     print(f"Created Agent Control Plane starter project at {target}")
     print("Next steps:")
+    print(f"  agentctl validate {target}")
     print(f"  agentctl review {target}")
     print(f"  agentctl assess {target}")
     print(f"  agentctl portal {target}")
@@ -108,6 +119,10 @@ def main(argv: list[str] | None = None) -> int:
     p_inv = sub.add_parser("inventory", help="Show project inventory")
     p_inv.add_argument("path")
 
+    p_validate = sub.add_parser("validate", help="Validate a project as a production gate")
+    p_validate.add_argument("path")
+    p_validate.add_argument("--json", action="store_true")
+
     p_review = sub.add_parser("review", help="Plain-language review for non-technical reviewers")
     p_review.add_argument("path")
     p_review.add_argument("--agent")
@@ -146,6 +161,8 @@ def main(argv: list[str] | None = None) -> int:
         init_intake(args.path)
     elif args.command == "inventory":
         inventory(args.path)
+    elif args.command == "validate":
+        return validate_project_command(args.path, args.json)
     elif args.command == "review":
         review_project(args.path, args.agent)
     elif args.command == "assess":

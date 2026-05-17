@@ -25,13 +25,23 @@ result = plane.execute_tool(
 ## Load YAML governance project
 
 ```python
-from agent_control_plane import ControlPlaneProject
+from agent_control_plane import ControlPlaneProject, validate_project
+
+report = validate_project("my_agent_project")
+if not report.valid:
+    raise RuntimeError(report.to_markdown())
 
 project = ControlPlaneProject.load("my_agent_project")
 plane = project.build_control_plane(handlers={
     "get_order": get_order,
     "issue_refund": issue_refund,
 })
+```
+
+The CLI form is suitable for CI:
+
+```bash
+agentctl validate my_agent_project --json
 ```
 
 ## Use the policy builder
