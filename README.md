@@ -101,7 +101,7 @@ agentctl portal my_agent_project
 agentctl init-intake blank_forms
 ```
 
-## Governance positioning
+## Governance Interface
 
 This framework supports AI governance readiness by creating runtime controls and evidence: agent inventory, tool catalog, deterministic policies, human approvals, audit events, and readiness reviews.
 
