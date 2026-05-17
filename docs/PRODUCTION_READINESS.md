@@ -25,18 +25,57 @@ Validation currently checks:
 
 Treat validation errors as deployment blockers.
 
+## Current durable runtime option
+
+Use `SQLiteApprovalQueue` and `SQLiteIdempotencyStore` for pilot deployments
+where approvals and retry records must survive process restarts:
+
+```python
+from agent_control_plane import (
+    ControlPlaneProject,
+    SQLiteApprovalQueue,
+    SQLiteAuditLedger,
+    SQLiteIdempotencyStore,
+)
+
+project = ControlPlaneProject.load("my_agent_project")
+plane = project.build_control_plane(
+    handlers={"issue_refund": issue_refund},
+    approvals=SQLiteApprovalQueue("var/agent-control-plane/approvals.db"),
+    ledger=SQLiteAuditLedger("var/agent-control-plane/audit.db"),
+    idempotency=SQLiteIdempotencyStore("var/agent-control-plane/idempotency.db"),
+)
+```
+
+SQLite approvals persist the approval request, original tool call, policy
+decision, status, approver metadata, notes, modified arguments, and timestamps.
+SQLite idempotency records persist a stable key, request fingerprint, terminal
+result, and timestamps so retries do not double-execute side-effecting tools.
+SQLite audit records are append-only and hash-chained. Call
+`plane.ledger.verify()` during tests, deployment checks, or export jobs to detect
+missing, reordered, or tampered records before relying on the evidence package.
+For enterprise deployments, replace the same `ApprovalQueue` and
+`IdempotencyStore` protocols, plus the `AuditLedger` protocol, with
+Postgres-backed implementations integrated with SSO, your approval UI, and
+observability stack.
+
+Runtime audit coverage includes agent/tool registration, tool proposals, policy
+outcomes, approval requests, approval decisions, approval rechecks, allowed
+executions, tool errors, and all idempotency states: started, completed,
+replayed, conflicted, and in-progress.
+
 ## Required production components
 
 - Central API service
 - OIDC / SSO authentication
 - RBAC and ABAC authorization
 - Postgres-backed registries
-- Durable approval workflow
+- Enterprise approval workflow
 - Immutable audit store
 - SIEM / SOC export
 - OpenTelemetry tracing
 - Policy versioning and rollback
-- Idempotency keys for every tool call
+- Idempotency keys for every side-effecting tool call
 - Sidecar or gateway deployment mode
 - DLP and result redaction
 - Incident response and kill switch
@@ -46,6 +85,7 @@ Treat validation errors as deployment blockers.
 - Invalid project configuration should fail before runtime.
 - Low-risk read-only actions may use cached policy.
 - High-risk actions should fail closed.
+- Side-effecting retries should provide idempotency keys.
 - Sensitive data exports should fail closed.
 - Production deployments should fail closed.
 

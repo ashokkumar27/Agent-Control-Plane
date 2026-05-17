@@ -144,6 +144,7 @@ class ToolCall:
     user_id: str | None
     tool_name: str
     args: dict[str, Any]
+    idempotency_key: str | None = None
     context: dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=utc_now_iso)
 
