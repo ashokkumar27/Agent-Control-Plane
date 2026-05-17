@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from .approvals import InMemoryApprovalQueue
+from .approvals import ApprovalQueue, InMemoryApprovalQueue
 from .guardrails import BasicGuardrails
+from .idempotency import IdempotencyStore, InMemoryIdempotencyStore, tool_call_fingerprint
 from .ledger import AuditLedger, InMemoryAuditLedger
 from .models import AgentCard, DecisionType, PolicyDecision, ToolCall, ToolCard, new_id
 from .policy import PolicyEngine
@@ -29,7 +30,8 @@ class AgentControlPlane:
         agents: AgentRegistry | None = None,
         tools: ToolRegistry | None = None,
         policy_engine: PolicyEngine | None = None,
-        approvals: InMemoryApprovalQueue | None = None,
+        approvals: ApprovalQueue | None = None,
+        idempotency: IdempotencyStore | None = None,
         ledger: AuditLedger | None = None,
         guardrails: BasicGuardrails | None = None,
     ) -> None:
@@ -37,6 +39,7 @@ class AgentControlPlane:
         self.tools = tools or ToolRegistry()
         self.policy_engine = policy_engine or PolicyEngine()
         self.approvals = approvals or InMemoryApprovalQueue()
+        self.idempotency = idempotency or InMemoryIdempotencyStore()
         self.ledger = ledger or InMemoryAuditLedger()
         self.guardrails = guardrails or BasicGuardrails()
 
@@ -72,6 +75,7 @@ class AgentControlPlane:
         args: dict[str, Any],
         user_id: str | None = None,
         run_id: str | None = None,
+        idempotency_key: str | None = None,
         context: dict[str, Any] | None = None,
     ) -> tuple[ToolCall, PolicyDecision]:
         """Authorize a tool call without executing it."""
@@ -94,6 +98,7 @@ class AgentControlPlane:
             user_id=user_id,
             tool_name=tool_name,
             args=args,
+            idempotency_key=idempotency_key,
             context=context,
         )
         decision = self.policy_engine.authorize(agent=agent, tool=tool, tool_call=call)
@@ -113,6 +118,7 @@ class AgentControlPlane:
         args: dict[str, Any],
         user_id: str | None = None,
         run_id: str | None = None,
+        idempotency_key: str | None = None,
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Authorize and execute a tool call if allowed.
@@ -126,6 +132,7 @@ class AgentControlPlane:
             args=args,
             user_id=user_id,
             run_id=run_id,
+            idempotency_key=idempotency_key,
             context=context,
         )
 
@@ -160,6 +167,7 @@ class AgentControlPlane:
         tool_name: str,
         user_id: str | None = None,
         run_id: str | None = None,
+        idempotency_key: str | None = None,
         context: dict[str, Any] | None = None,
     ):
         """Return a developer-friendly callable that routes through the control plane.
@@ -175,6 +183,7 @@ class AgentControlPlane:
                 args=kwargs,
                 user_id=user_id,
                 run_id=run_id,
+                idempotency_key=idempotency_key,
                 context=context,
             )
         return _wrapped
@@ -186,6 +195,7 @@ class AgentControlPlane:
         approver_id: str,
         approver_role: str | None = None,
         modified_args: dict[str, Any] | None = None,
+        idempotency_key: str | None = None,
         notes: str | None = None,
     ) -> dict[str, Any]:
         """Approve a pending request and execute the underlying tool."""
@@ -199,6 +209,8 @@ class AgentControlPlane:
         call = approval.tool_call
         if modified_args is not None:
             call.args = modified_args
+        if idempotency_key is not None:
+            call.idempotency_key = idempotency_key
         self.ledger.append(
             run_id=call.run_id,
             agent_id=call.agent_id,
@@ -262,6 +274,75 @@ class AgentControlPlane:
         return {"status": "rejected", "approval_id": approval_id, "notes": notes}
 
     def _execute_authorized_call(self, *, call: ToolCall, decision: PolicyDecision) -> dict[str, Any]:
+        if call.idempotency_key:
+            request_hash = tool_call_fingerprint(
+                agent_id=call.agent_id,
+                user_id=call.user_id,
+                tool_name=call.tool_name,
+                args=call.args,
+            )
+            record, started = self.idempotency.start(call.idempotency_key, request_hash)
+            if not started:
+                if record.request_hash != request_hash:
+                    result = {
+                        "status": "idempotency_conflict",
+                        "reason": "Idempotency key was already used for a different request.",
+                        "idempotency": {"key": call.idempotency_key, "replayed": False},
+                        "decision": decision.to_dict(),
+                        "call_id": call.call_id,
+                    }
+                    self.ledger.append(
+                        run_id=call.run_id,
+                        agent_id=call.agent_id,
+                        event_type="idempotency_conflict",
+                        payload={"tool_call": call.to_dict(), "result": result, "existing_record": record.to_dict()},
+                    )
+                    return result
+                if record.status == "completed" and record.result is not None:
+                    result = dict(record.result)
+                    result["idempotency"] = {"key": call.idempotency_key, "replayed": True}
+                    self.ledger.append(
+                        run_id=call.run_id,
+                        agent_id=call.agent_id,
+                        event_type="idempotency_replayed",
+                        payload={"tool_call": call.to_dict(), "result": result},
+                    )
+                    return result
+                result = {
+                    "status": "idempotency_in_progress",
+                    "reason": "Idempotency key is already being processed.",
+                    "idempotency": {"key": call.idempotency_key, "replayed": False},
+                    "decision": decision.to_dict(),
+                    "call_id": call.call_id,
+                }
+                self.ledger.append(
+                    run_id=call.run_id,
+                    agent_id=call.agent_id,
+                    event_type="idempotency_in_progress",
+                    payload={"tool_call": call.to_dict(), "result": result, "existing_record": record.to_dict()},
+                )
+                return result
+
+            self.ledger.append(
+                run_id=call.run_id,
+                agent_id=call.agent_id,
+                event_type="idempotency_started",
+                payload={"tool_call": call.to_dict(), "idempotency_record": record.to_dict()},
+            )
+            result = self._execute_once(call=call, decision=decision)
+            result["idempotency"] = {"key": call.idempotency_key, "replayed": False}
+            completed = self.idempotency.complete(call.idempotency_key, request_hash, result)
+            self.ledger.append(
+                run_id=call.run_id,
+                agent_id=call.agent_id,
+                event_type="idempotency_completed",
+                payload={"tool_call": call.to_dict(), "result": result, "idempotency_record": completed.to_dict()},
+            )
+            return result
+
+        return self._execute_once(call=call, decision=decision)
+
+    def _execute_once(self, *, call: ToolCall, decision: PolicyDecision) -> dict[str, Any]:
         try:
             handler = self.tools.get_handler(call.tool_name)
             output = handler(**call.args)

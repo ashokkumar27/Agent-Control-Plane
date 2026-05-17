@@ -94,7 +94,13 @@ python3 examples/developer_friendly_sdk.py
 python3 examples/agentic_framework_scenarios.py
 ```
 
-## 7. Run tests
+## 7. Pilot-grade durability
+
+For side-effecting tools in pilots, use SQLite-backed approvals and
+idempotency, and pass a stable `idempotency_key` on execution. This keeps
+approval requests and retry results durable across process restarts.
+
+## 8. Run tests
 
 ```bash
 python3 -m unittest discover -s tests -v

@@ -64,7 +64,15 @@ def to_openai_tool_schema(fn: Callable[..., Any], card: ToolCard | None = None) 
     }
 
 
-def wrap_openai_tool_executor(control_plane: AgentControlPlane, *, agent_id: str, user_id: str | None = None, run_id: str | None = None, context: dict[str, Any] | None = None) -> Callable[[str, dict[str, Any]], dict[str, Any]]:
+def wrap_openai_tool_executor(
+    control_plane: AgentControlPlane,
+    *,
+    agent_id: str,
+    user_id: str | None = None,
+    run_id: str | None = None,
+    context: dict[str, Any] | None = None,
+    idempotency_key_fn: Callable[[str, dict[str, Any]], str | None] | None = None,
+) -> Callable[[str, dict[str, Any]], dict[str, Any]]:
     """Return a small executor for OpenAI-style function calls.
 
     Usage in a model loop:
@@ -79,6 +87,7 @@ def wrap_openai_tool_executor(control_plane: AgentControlPlane, *, agent_id: str
             args=args,
             user_id=user_id,
             run_id=run_id,
+            idempotency_key=idempotency_key_fn(tool_name, args) if idempotency_key_fn else None,
             context=context,
         )
 

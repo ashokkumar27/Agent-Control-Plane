@@ -1,6 +1,8 @@
+import tempfile
 import unittest
+from pathlib import Path
 
-from agent_control_plane import AgentCard, AgentControlPlane, PolicyEngine, PolicyRule, ToolCard
+from agent_control_plane import AgentCard, AgentControlPlane, PolicyEngine, PolicyRule, SQLiteApprovalQueue, ToolCard
 
 
 def refund_tool(order_id: str, amount: float, reason: str):
@@ -54,6 +56,39 @@ class GatewayTests(unittest.TestCase):
         records = self.cp.ledger.list_records()
         self.assertGreaterEqual(len(records), 3)
         self.assertTrue(all(record.evidence_hash for record in records))
+
+    def test_sqlite_approval_survives_control_plane_restart(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "approvals.db"
+
+            def build_plane():
+                cp = AgentControlPlane(
+                    policy_engine=PolicyEngine(self.cp.policy_engine.rules),
+                    approvals=SQLiteApprovalQueue(db_path),
+                )
+                cp.register_agent(AgentCard(agent_id="a1", owner="test", purpose="test", allowed_tools=["issue_refund"]))
+                cp.register_tool(ToolCard(name="issue_refund", description="refund", tool_type="side_effecting"), refund_tool)
+                return cp
+
+            first_plane = build_plane()
+            result = first_plane.execute_tool(
+                agent_id="a1",
+                tool_name="issue_refund",
+                args={"order_id": "A1", "amount": 100, "reason": "damaged"},
+            )
+            approval_id = result["approval_id"]
+
+            restarted_plane = build_plane()
+            resumed = restarted_plane.approve_and_execute(
+                approval_id,
+                approver_id="m1",
+                approver_role="manager",
+                modified_args={"order_id": "A1", "amount": 80, "reason": "approved"},
+            )
+
+            self.assertEqual(resumed["status"], "success")
+            self.assertEqual(resumed["output"]["amount"], 80)
+            self.assertEqual(SQLiteApprovalQueue(db_path).get(approval_id).status, "approved")
 
 
 if __name__ == "__main__":

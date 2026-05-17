@@ -37,17 +37,27 @@ You will get:
 Use the Python SDK:
 
 ```python
-from agent_control_plane import ControlPlaneProject
+from agent_control_plane import ControlPlaneProject, SQLiteApprovalQueue, SQLiteAuditLedger, SQLiteIdempotencyStore
 
 project = ControlPlaneProject.load("my_agent_project")
-plane = project.build_control_plane(handlers={"issue_refund": issue_refund})
+plane = project.build_control_plane(
+    handlers={"issue_refund": issue_refund},
+    approvals=SQLiteApprovalQueue("var/agent-control-plane/approvals.db"),
+    ledger=SQLiteAuditLedger("var/agent-control-plane/audit.db"),
+    idempotency=SQLiteIdempotencyStore("var/agent-control-plane/idempotency.db"),
+)
 
 result = plane.execute_tool(
     agent_id="customer_support_refund_agent",
     tool_name="issue_refund",
     args={"order_id": "A123", "amount": 280, "reason": "Damaged item"},
+    idempotency_key="refund:A123:280",
     context={"user": {"fraud_flag": False}},
 )
+
+ledger_check = plane.ledger.verify()
+if not ledger_check.valid:
+    raise RuntimeError(ledger_check.to_dict())
 ```
 
 Or wrap a tool as a normal callable:
@@ -114,6 +124,12 @@ the underlying tool handler.
 ## Governance Interface
 
 This framework supports AI governance readiness by creating runtime controls and evidence: agent inventory, tool catalog, deterministic policies, human approvals, audit events, and readiness reviews.
+
+Runtime evidence is append-only and hash-chained. The SQLite ledger can be
+verified with `plane.ledger.verify()` to detect missing, reordered, or tampered
+records. Tool proposals, policy outcomes, approval decisions, execution results,
+tool errors, and idempotency replay/conflict/progress events are logged as
+structured audit records.
 
 It should not be described as automatic legal compliance. It is a technical and operational control layer that helps teams implement governance requirements.
 

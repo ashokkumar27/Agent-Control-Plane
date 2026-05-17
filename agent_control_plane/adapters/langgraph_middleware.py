@@ -20,12 +20,14 @@ class LangGraphToolMiddleware:
         agent_id: str,
         user_id: str | None = None,
         run_id: str | None = None,
+        idempotency_key: str | None = None,
         context: dict[str, Any] | None = None,
     ):
         self.control_plane = control_plane
         self.agent_id = agent_id
         self.user_id = user_id
         self.run_id = run_id
+        self.idempotency_key = idempotency_key
         self.context = context
 
     def wrap_tool(self, tool_name: str, handler: Callable[..., Any]) -> Callable[..., dict[str, Any]]:
@@ -39,6 +41,7 @@ class LangGraphToolMiddleware:
                 args=kwargs,
                 user_id=self.user_id,
                 run_id=self.run_id,
+                idempotency_key=self.idempotency_key,
                 context=self.context,
             )
 

@@ -32,8 +32,14 @@ from .policy import PolicyEngine, load_policy_file
 from .policy_builder import rule, RuleBuilder
 from .gateway import AgentControlPlane
 from .decorators import governed_tool
-from .approvals import InMemoryApprovalQueue
-from .ledger import AuditLedger, InMemoryAuditLedger, SQLiteAuditLedger
+from .approvals import ApprovalQueue, InMemoryApprovalQueue, SQLiteApprovalQueue
+from .idempotency import (
+    IdempotencyRecord,
+    IdempotencyStore,
+    InMemoryIdempotencyStore,
+    SQLiteIdempotencyStore,
+)
+from .ledger import AuditLedger, InMemoryAuditLedger, LedgerVerificationIssue, LedgerVerificationResult, SQLiteAuditLedger
 from .project import ControlPlaneProject
 from .templates import write_starter_project
 from .onboarding import write_intake_templates
@@ -68,6 +74,17 @@ __all__ = [
     "Finding",
     "describe_agent_for_humans",
     "InMemoryApprovalQueue",
+    "ApprovalQueue",
+    "SQLiteApprovalQueue",
+    "IdempotencyRecord",
+    "IdempotencyStore",
+    "InMemoryIdempotencyStore",
+    "SQLiteIdempotencyStore",
+    "AuditLedger",
+    "InMemoryAuditLedger",
+    "LedgerVerificationIssue",
+    "LedgerVerificationResult",
+    "SQLiteAuditLedger",
     "ProjectValidationIssue",
     "ProjectValidationReport",
     "validate_project",

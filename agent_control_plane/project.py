@@ -4,7 +4,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+from .approvals import ApprovalQueue
+from .idempotency import IdempotencyStore
 from .io import iter_config_files, read_structured_file
+from .ledger import AuditLedger
 from .models import AgentCard, DecisionType, ToolCard, PolicyRule
 from .policy import PolicyEngine
 from .registries import AgentRegistry, ToolRegistry
@@ -59,7 +62,14 @@ class ControlPlaneProject:
 
         return cls(root=root, agents=agents, tools=tools, policies=policies, risk_assessments=risk_assessments)
 
-    def build_control_plane(self, handlers: dict[str, Callable[..., Any]] | None = None) -> AgentControlPlane:
+    def build_control_plane(
+        self,
+        handlers: dict[str, Callable[..., Any]] | None = None,
+        *,
+        approvals: ApprovalQueue | None = None,
+        idempotency: IdempotencyStore | None = None,
+        ledger: AuditLedger | None = None,
+    ) -> AgentControlPlane:
         handlers = handlers or {}
         agent_registry = AgentRegistry()
         tool_registry = ToolRegistry()
@@ -71,6 +81,9 @@ class ControlPlaneProject:
             agents=agent_registry,
             tools=tool_registry,
             policy_engine=PolicyEngine(self.policies),
+            approvals=approvals,
+            idempotency=idempotency,
+            ledger=ledger,
         )
 
     def get_agent(self, agent_id: str | None = None) -> AgentCard:
