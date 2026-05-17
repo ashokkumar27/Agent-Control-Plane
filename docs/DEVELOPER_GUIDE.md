@@ -55,3 +55,16 @@ engine = PolicyEngine(rules)
 - LangGraph: wrap ToolNode or tool functions.
 - CrewAI / AutoGen / LlamaIndex / custom harnesses: wrap the executor or tool registry.
 - MCP: place the control plane in front of MCP tool execution.
+
+## Adapter scenario checks
+
+Run the framework-style scenario harness from the repository root:
+
+```bash
+python3 examples/agentic_framework_scenarios.py
+```
+
+It uses dependency-free OpenAI-style and LangGraph-style adapters to cover the
+baseline flows: read-only lookup, small refund allowed, support approval,
+finance approval, fraud denial, and prompt-injection escalation before a
+side-effecting tool.

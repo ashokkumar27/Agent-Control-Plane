@@ -101,6 +101,9 @@ agentctl portal my_agent_project
 agentctl init-intake blank_forms
 ```
 
+`agentctl simulate` is a dry run: it returns the policy outcome without calling
+the underlying tool handler.
+
 ## Governance Interface
 
 This framework supports AI governance readiness by creating runtime controls and evidence: agent inventory, tool catalog, deterministic policies, human approvals, audit events, and readiness reviews.
@@ -110,9 +113,10 @@ It should not be described as automatic legal compliance. It is a technical and 
 ## Try it
 
 ```bash
-python -m pip install -e .
+python3 -m pip install -e .
 agentctl review sample_project
 agentctl assess sample_project
-python examples/developer_friendly_sdk.py
-python -m unittest discover -s tests -v
+python3 examples/developer_friendly_sdk.py
+python3 examples/agentic_framework_scenarios.py
+python3 -m unittest discover -s tests -v
 ```

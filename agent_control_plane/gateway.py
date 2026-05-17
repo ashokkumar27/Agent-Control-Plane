@@ -262,8 +262,8 @@ class AgentControlPlane:
         return {"status": "rejected", "approval_id": approval_id, "notes": notes}
 
     def _execute_authorized_call(self, *, call: ToolCall, decision: PolicyDecision) -> dict[str, Any]:
-        handler = self.tools.get_handler(call.tool_name)
         try:
+            handler = self.tools.get_handler(call.tool_name)
             output = handler(**call.args)
             result = {"status": "success", "output": output, "decision": decision.to_dict(), "call_id": call.call_id}
             self.ledger.append(

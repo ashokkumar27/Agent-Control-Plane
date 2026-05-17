@@ -78,11 +78,19 @@ def inventory(path: str) -> None:
     _print_json(project.inventory_summary())
 
 
-def simulate(path: str, agent_id: str, tool_name: str, args_json: str, user_json: str | None = None) -> None:
+def simulate(
+    path: str,
+    agent_id: str,
+    tool_name: str,
+    args_json: str,
+    user_json: str | None = None,
+    context_json: str | None = None,
+) -> None:
     project = ControlPlaneProject.load(path)
     args = json.loads(args_json)
     user = json.loads(user_json) if user_json else {}
-    result = project.simulate(agent_id=agent_id, tool_name=tool_name, args=args, user=user)
+    context = json.loads(context_json) if context_json else {}
+    result = project.simulate(agent_id=agent_id, tool_name=tool_name, args=args, user=user, context=context)
     _print_json(result)
 
 
@@ -109,12 +117,13 @@ def main(argv: list[str] | None = None) -> int:
     p_assess.add_argument("--agent")
     p_assess.add_argument("--json", action="store_true")
 
-    p_sim = sub.add_parser("simulate", help="Simulate a tool call and see policy decision")
+    p_sim = sub.add_parser("simulate", help="Dry-run a tool call and see the policy decision")
     p_sim.add_argument("path")
     p_sim.add_argument("--agent", required=True)
     p_sim.add_argument("--tool", required=True)
     p_sim.add_argument("--args", required=True, help='JSON object, e.g. {"amount": 25}')
     p_sim.add_argument("--user", help='Optional JSON user context, e.g. {"fraud_flag": false}')
+    p_sim.add_argument("--context", help='Optional JSON runtime context, e.g. {"input": "user message"}')
 
     p_portal = sub.add_parser("portal", help="Run a local non-technical onboarding portal")
     p_portal.add_argument("path")
@@ -142,7 +151,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "assess":
         assess_project(args.path, args.agent, args.json)
     elif args.command == "simulate":
-        simulate(args.path, args.agent, args.tool, args.args, args.user)
+        simulate(args.path, args.agent, args.tool, args.args, args.user, args.context)
     elif args.command == "portal":
         run_portal(args.path, host=args.host, port=args.port)
     elif args.command == "validate-agent":
